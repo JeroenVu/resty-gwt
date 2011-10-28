@@ -18,7 +18,21 @@
 
 package org.fusesource.restygwt.client;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.sql.Time;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.fusesource.restygwt.client.Json.Style;
+
 import com.google.gwt.i18n.client.DateTimeFormat;
+import com.google.gwt.i18n.client.DateTimeFormat.PredefinedFormat;
 import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONBoolean;
 import com.google.gwt.json.client.JSONNull;
@@ -28,20 +42,6 @@ import com.google.gwt.json.client.JSONString;
 import com.google.gwt.json.client.JSONValue;
 import com.google.gwt.xml.client.Document;
 import com.google.gwt.xml.client.XMLParser;
-
-import org.fusesource.restygwt.client.Json.Style;
-
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 
 /**
  *
@@ -68,6 +68,38 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
 
         public JSONValue encode(Boolean value) throws EncodingException {
             return (value == null) ? getNullType() : JSONBoolean.getInstance(value);
+        }
+    };
+
+    public static final AbstractJsonEncoderDecoder<boolean[]> BOOLEAN_ARRAY = new AbstractJsonEncoderDecoder<boolean[]>() {
+
+        public boolean[] decode(JSONValue value) throws DecodingException {
+            if (value == null || value.isNull() != null) {
+                return null;
+            }
+            JSONArray array = value.isArray();
+            if (array == null) {
+                throw new DecodingException("Expected a json array, but was given: " + value);
+            }
+
+            boolean[] rc = new boolean[array.size()];
+            int size = array.size();
+            for (int i = 0; i < size; i++) {
+                rc[i] = array.get(i).isBoolean().booleanValue();
+            }
+            return rc;
+        }
+
+        public JSONValue encode(boolean[] value) throws EncodingException {
+            if (value == null) {
+                return JSONNull.getInstance();
+            }
+            JSONArray rc = new JSONArray();
+            int i = 0;
+            for (boolean b : value) {
+                rc.set(i++, JSONBoolean.getInstance(b));
+            }
+            return rc;
         }
     };
 
@@ -128,6 +160,41 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
 
         public JSONValue encode(Integer value) throws EncodingException {
             return (value == null) ? getNullType() : new JSONNumber(value);
+        }
+    };
+
+
+    public static final AbstractJsonEncoderDecoder<int[]> INT_ARRAY = new AbstractJsonEncoderDecoder<int[]>() {
+
+        public int[] decode(JSONValue value) throws DecodingException {
+            if (value == null || value.isNull() != null) {
+                return null;
+            }
+
+            JSONArray array = value.isArray();
+            if (array == null) {
+                throw new DecodingException("Expected a json array, but was given: " + value);
+            }
+
+            int[] rc = new int[array.size()];
+            int size = array.size();
+            for (int i = 0; i < size; i++) {
+            	JSONValue number = array.get(i);
+                rc[i] = number.isNull() == null ? (int) toDouble(number) : null;
+            }
+            return rc;
+        }
+
+        public JSONValue encode(int[] value) throws EncodingException {
+            if (value == null) {
+                return JSONNull.getInstance();
+            }
+            JSONArray rc = new JSONArray();
+            int i = 0;
+            for (int v : value) {
+                rc.set(i++, new JSONNumber(v));
+            }
+            return rc;
         }
     };
 
@@ -297,6 +364,43 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
         }
     };
 
+    public static final AbstractJsonEncoderDecoder<Time> TIME = new AbstractJsonEncoderDecoder<Time>() {
+
+        public Time decode(JSONValue value) throws DecodingException {
+            if (value == null || value.isNull() != null) {
+                return null;
+            }
+            JSONString str = value.isString();
+            if (str == null) {
+                throw new DecodingException("Expected a json string, but was given: " + value);
+            }
+
+            String format = Defaults.getTimeFormat();
+            if (str.stringValue() == null || str.stringValue().length() == 0) {
+                return null;
+            } else if (format != null) {
+                return new Time(DateTimeFormat.getFormat(format).parse(str.stringValue()).getTime());
+            } else {
+                return new Time(DateTimeFormat
+                        .getFormat(PredefinedFormat.TIME_MEDIUM)
+                        .parse(str.stringValue()).getTime());
+            }
+        }
+
+        public JSONValue encode(Time value) throws EncodingException {
+            if (value == null) {
+                return JSONNull.getInstance();
+            }
+            String format = Defaults.getTimeFormat();
+            if (format != null) {
+                return new JSONString(DateTimeFormat.getFormat(format).format(value));
+            } else {
+                return new JSONString(DateTimeFormat.getFormat(
+                        PredefinedFormat.TIME_MEDIUM).format(value));
+            }
+        }
+    };
+
     // /////////////////////////////////////////////////////////////////
     // Helper Methods.
     // /////////////////////////////////////////////////////////////////
@@ -339,7 +443,13 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
         return toObject(result);
     }
 
-    static public <Type> List<Type> toList(JSONValue value, AbstractJsonEncoderDecoder<Type> encoder) {
+    @SuppressWarnings("unchecked")
+    static public <Type> Type[] toArray(JSONValue value, AbstractJsonEncoderDecoder<Type> encoder) {
+        ArrayList<Type> list = toList(value, encoder);
+        return (Type[]) (list == null ? null : list.toArray());
+    }
+
+    static public <Type> ArrayList<Type> toList(JSONValue value, AbstractJsonEncoderDecoder<Type> encoder) {
         if (value == null || value.isNull() != null) {
             return null;
         }
@@ -356,7 +466,7 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
         return rc;
     }
 
-    static public <Type> Set<Type> toSet(JSONValue value, AbstractJsonEncoderDecoder<Type> encoder) {
+    static public <Type> HashSet<Type> toSet(JSONValue value, AbstractJsonEncoderDecoder<Type> encoder) {
         if (value == null || value.isNull() != null) {
             return null;
         }
@@ -373,7 +483,7 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
         return rc;
     }
 
-    static public <Type> Map<String, Type> toMap(JSONValue value, AbstractJsonEncoderDecoder<Type> encoder, Style style) {
+    static public <Type> HashMap<String, Type> toMap(JSONValue value, AbstractJsonEncoderDecoder<Type> encoder, Style style) {
         if (value == null || value.isNull() != null) {
             return null;
         }
@@ -459,6 +569,18 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
         }
     }
 
+    static public <Type> JSONValue toJSON(Type[] value, AbstractJsonEncoderDecoder<Type> encoder) {
+        if (value == null) {
+            return JSONNull.getInstance();
+        }
+        JSONArray rc = new JSONArray();
+        int i = 0;
+        for (Type t : value) {
+            rc.set(i++, encoder.encode(t));
+        }
+        return rc;
+    }
+    
     static public <Type> JSONValue toJSON(Collection<Type> value, AbstractJsonEncoderDecoder<Type> encoder) {
         if (value == null) {
             return JSONNull.getInstance();

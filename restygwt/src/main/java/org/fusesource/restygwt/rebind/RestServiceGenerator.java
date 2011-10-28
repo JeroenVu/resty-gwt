@@ -23,6 +23,7 @@ import com.google.gwt.core.ext.GeneratorContext;
 import com.google.gwt.core.ext.TreeLogger;
 import com.google.gwt.core.ext.UnableToCompleteException;
 import com.google.gwt.core.ext.typeinfo.JClassType;
+import com.google.gwt.core.ext.typeinfo.JType;
 
 /**
  *
@@ -51,5 +52,17 @@ public class RestServiceGenerator extends Generator {
         }
         return rc;
     }
+
+    static JClassType findArray(TreeLogger logger, GeneratorContext context, String type) throws UnableToCompleteException {
+        return findArray(logger, context, context.getTypeOracle().findType(type));
+    }
+
+    static JClassType findArray(TreeLogger logger, GeneratorContext context, JType type) throws UnableToCompleteException {
+        if (type == null) {
+            logger.log(TreeLogger.ERROR, "TypeOracle could not find " + type + " required for array");
+            throw new UnableToCompleteException();
+        }
+        return context.getTypeOracle().getArrayType(type);
+	}
 
 }

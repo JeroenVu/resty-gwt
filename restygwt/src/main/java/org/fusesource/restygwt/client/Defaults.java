@@ -37,6 +37,7 @@ public class Defaults {
 
     private static String serviceRoot = GWT.getModuleBaseURL();
     private static String dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
+    private static String timeFormat = "HH:mm:ss";
     private static boolean ignoreJsonNulls = false;
     // patch TNY: timeout ms,
     // if >-1, used in Method class to set timeout
@@ -64,6 +65,10 @@ public class Defaults {
         return dateFormat;
     }
 
+    public static String getTimeFormat() {
+        return timeFormat;
+    }
+
     /**
      * Sets the format used when encoding and decoding Dates.
      *
@@ -71,6 +76,10 @@ public class Defaults {
      */
     public static void setDateFormat(String dateFormat) {
         Defaults.dateFormat = dateFormat;
+    }
+
+    public static void setTimeFormat(String timeFormat) {
+        Defaults.timeFormat = timeFormat;
     }
 
     /**

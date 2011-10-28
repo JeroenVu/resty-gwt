@@ -18,26 +18,35 @@
 
 package org.fusesource.restygwt.rebind;
 
+import static org.fusesource.restygwt.rebind.BaseSourceCreator.DEBUG;
+import static org.fusesource.restygwt.rebind.BaseSourceCreator.ERROR;
+import static org.fusesource.restygwt.rebind.BaseSourceCreator.INFO;
+import static org.fusesource.restygwt.rebind.BaseSourceCreator.TRACE;
+import static org.fusesource.restygwt.rebind.BaseSourceCreator.WARN;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Time;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.fusesource.restygwt.client.AbstractJsonEncoderDecoder;
+import org.fusesource.restygwt.client.Json;
+import org.fusesource.restygwt.client.Json.Style;
+
 import com.google.gwt.core.ext.GeneratorContext;
 import com.google.gwt.core.ext.TreeLogger;
 import com.google.gwt.core.ext.UnableToCompleteException;
+import com.google.gwt.core.ext.typeinfo.JArrayType;
 import com.google.gwt.core.ext.typeinfo.JClassType;
 import com.google.gwt.core.ext.typeinfo.JParameterizedType;
 import com.google.gwt.core.ext.typeinfo.JPrimitiveType;
 import com.google.gwt.core.ext.typeinfo.JType;
 import com.google.gwt.json.client.JSONValue;
 import com.google.gwt.xml.client.Document;
-import org.fusesource.restygwt.client.AbstractJsonEncoderDecoder;
-import org.fusesource.restygwt.client.Json;
-import org.fusesource.restygwt.client.Json.Style;
-import static org.fusesource.restygwt.rebind.BaseSourceCreator.*;
 
 /**
  *
@@ -54,6 +63,7 @@ public class JsonEncoderDecoderInstanceLocator {
     public final JClassType MAP_TYPE;
     public final JClassType SET_TYPE;
     public final JClassType LIST_TYPE;
+    public final JClassType ARRAY_TYPE;
 
     public final HashMap<JType, String> builtInEncoderDecoders = new HashMap<JType, String>();
 
@@ -70,6 +80,7 @@ public class JsonEncoderDecoderInstanceLocator {
         this.MAP_TYPE = find(Map.class);
         this.SET_TYPE = find(Set.class);
         this.LIST_TYPE = find(List.class);
+        this.ARRAY_TYPE = findArray(context.getTypeOracle().getJavaLangObject());
 
         builtInEncoderDecoders.put(JPrimitiveType.BOOLEAN, JSON_ENCODER_DECODER_CLASS + ".BOOLEAN");
         builtInEncoderDecoders.put(JPrimitiveType.BYTE, JSON_ENCODER_DECODER_CLASS + ".BYTE");
@@ -95,7 +106,16 @@ public class JsonEncoderDecoderInstanceLocator {
         builtInEncoderDecoders.put(JSON_VALUE_TYPE, JSON_ENCODER_DECODER_CLASS + ".JSON_VALUE");
 
         builtInEncoderDecoders.put(find(Date.class), JSON_ENCODER_DECODER_CLASS + ".DATE");
+        builtInEncoderDecoders.put(find(Time.class), JSON_ENCODER_DECODER_CLASS + ".TIME");
 
+        builtInEncoderDecoders.put(findArray(JPrimitiveType.BOOLEAN), JSON_ENCODER_DECODER_CLASS + ".BOOLEAN_ARRAY");
+        builtInEncoderDecoders.put(findArray(JPrimitiveType.BYTE), JSON_ENCODER_DECODER_CLASS + ".BYTE_ARRAY");
+        builtInEncoderDecoders.put(findArray(JPrimitiveType.CHAR), JSON_ENCODER_DECODER_CLASS + ".CHAR_ARRAY");
+        builtInEncoderDecoders.put(findArray(JPrimitiveType.SHORT), JSON_ENCODER_DECODER_CLASS + ".SHORT_ARRAY");
+        builtInEncoderDecoders.put(findArray(JPrimitiveType.INT), JSON_ENCODER_DECODER_CLASS + ".INT_ARRAY");
+        builtInEncoderDecoders.put(findArray(JPrimitiveType.LONG), JSON_ENCODER_DECODER_CLASS + ".LONG_ARRAY");
+        builtInEncoderDecoders.put(findArray(JPrimitiveType.FLOAT), JSON_ENCODER_DECODER_CLASS + ".FLOAT_ARRAY");
+        builtInEncoderDecoders.put(findArray(JPrimitiveType.DOUBLE), JSON_ENCODER_DECODER_CLASS + ".DOUBLE_ARRAY");
     }
 
     private JClassType find(Class<?> type) throws UnableToCompleteException {
@@ -105,6 +125,10 @@ public class JsonEncoderDecoderInstanceLocator {
     private JClassType find(String type) throws UnableToCompleteException {
         return RestServiceGenerator.find(logger, context, type);
     }
+
+    private JClassType findArray(JType type) throws UnableToCompleteException {
+        return RestServiceGenerator.findArray(logger, context, type);
+	}
 
     private String getEncoderDecoder(JType type, TreeLogger logger) throws UnableToCompleteException {
         String rc = builtInEncoderDecoders.get(type);
@@ -119,23 +143,23 @@ public class JsonEncoderDecoderInstanceLocator {
     }
 
     public String encodeExpression(JType type, String expression, Style style) throws UnableToCompleteException {
-        return encodeDecodeExpression(type, expression, style, "encode", JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS
+        return encodeDecodeExpression(type, expression, style, "encode", JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS
                 + ".toJSON");
     }
 
     public String decodeExpression(JType type, String expression, Style style) throws UnableToCompleteException {
-        return encodeDecodeExpression(type, expression, style, "decode", JSON_ENCODER_DECODER_CLASS + ".toMap", JSON_ENCODER_DECODER_CLASS + ".toSet", JSON_ENCODER_DECODER_CLASS
+        return encodeDecodeExpression(type, expression, style, "decode", JSON_ENCODER_DECODER_CLASS + ".toArray", JSON_ENCODER_DECODER_CLASS + ".toMap", JSON_ENCODER_DECODER_CLASS + ".toSet", JSON_ENCODER_DECODER_CLASS
                 + ".toList");
     }
 
-    private String encodeDecodeExpression(JType type, String expression, Style style, String encoderMethod, String mapMethod, String setMethod, String listMethod)
+    private String encodeDecodeExpression(JType type, String expression, Style style, String encoderMethod, String arrayMethod, String mapMethod, String setMethod, String listMethod)
             throws UnableToCompleteException {
 
         if (null != type.isEnum()) {
             if (encoderMethod.equals("encode")) {
-                return encodeDecodeExpression(STRING_TYPE, expression + ".name()", style, encoderMethod, mapMethod, setMethod, listMethod);
+                return encodeDecodeExpression(STRING_TYPE, expression + ".name()", style, encoderMethod, arrayMethod, mapMethod, setMethod, listMethod);
             } else {
-                return type.getQualifiedSourceName() + ".valueOf(" + encodeDecodeExpression(STRING_TYPE, expression, style, encoderMethod, mapMethod, setMethod, listMethod) + ")";
+                return type.getQualifiedSourceName() + ".valueOf(" + encodeDecodeExpression(STRING_TYPE, expression, style, encoderMethod, arrayMethod, mapMethod, setMethod, listMethod) + ")";
             }
         }
 
@@ -146,7 +170,14 @@ public class JsonEncoderDecoderInstanceLocator {
 
         JClassType clazz = type.isClassOrInterface();
 
-        if (isCollectionType(clazz)) {
+        if (isArrayType(type.isArray())) {
+            JArrayType arrayType = type.isArray();
+
+            encoderDecoder = getEncoderDecoder(arrayType.getComponentType(), logger);
+            if (encoderDecoder != null) {
+                return arrayMethod + "(" + expression + ", " + encoderDecoder + ")";
+            }
+        } else if (isCollectionType(clazz)) {
             JParameterizedType parameterizedType = type.isParameterized();
             if (parameterizedType == null || parameterizedType.getTypeArgs() == null) {
                 error("Collection types must be parameterized.");
@@ -186,6 +217,10 @@ public class JsonEncoderDecoderInstanceLocator {
 
         error("Do not know how to encode/decode " + type);
         return null;
+    }
+
+    private boolean isArrayType(JArrayType clazz) throws UnableToCompleteException {
+        return clazz != null && clazz.isAssignableTo(ARRAY_TYPE);
     }
 
     boolean isCollectionType(JClassType clazz) {
