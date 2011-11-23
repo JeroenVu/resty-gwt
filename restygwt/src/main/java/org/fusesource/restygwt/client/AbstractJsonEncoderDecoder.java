@@ -32,7 +32,6 @@ import java.util.Map.Entry;
 import org.fusesource.restygwt.client.Json.Style;
 
 import com.google.gwt.i18n.client.DateTimeFormat;
-import com.google.gwt.i18n.client.DateTimeFormat.PredefinedFormat;
 import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONBoolean;
 import com.google.gwt.json.client.JSONNull;
@@ -370,33 +369,32 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
             if (value == null || value.isNull() != null) {
                 return null;
             }
-            JSONString str = value.isString();
-            if (str == null) {
-                throw new DecodingException("Expected a json string, but was given: " + value);
-            }
 
             String format = Defaults.getTimeFormat();
-            if (str.stringValue() == null || str.stringValue().length() == 0) {
-                return null;
-            } else if (format != null) {
-                return new Time(DateTimeFormat.getFormat(format).parse(str.stringValue()).getTime());
+            if (format == null) {
+                JSONNumber num = value.isNumber();
+                if (num == null) {
+                    throw new DecodingException("Expected a json number, but was given: " + value);
+                }
+                return new Time((long)num.doubleValue());
             } else {
-                return new Time(DateTimeFormat
-                        .getFormat(PredefinedFormat.TIME_MEDIUM)
-                        .parse(str.stringValue()).getTime());
+                JSONString str = value.isString();
+                if (str == null) {
+                    throw new DecodingException("Expected a json string, but was given: " + value);
+                }
+                return new Time(DateTimeFormat.getFormat(format).parse(str.stringValue()).getTime());
             }
         }
 
         public JSONValue encode(Time value) throws EncodingException {
             if (value == null) {
-                return JSONNull.getInstance();
+                return getNullType();
             }
             String format = Defaults.getTimeFormat();
-            if (format != null) {
-                return new JSONString(DateTimeFormat.getFormat(format).format(value));
+            if (format == null) {
+                return new JSONNumber(value.getTime());
             } else {
-                return new JSONString(DateTimeFormat.getFormat(
-                        PredefinedFormat.TIME_MEDIUM).format(value));
+                return new JSONString(DateTimeFormat.getFormat(format).format(value));
             }
         }
     };
