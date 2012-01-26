@@ -54,6 +54,8 @@ import com.google.gwt.xml.client.Document;
  */
 public class JsonEncoderDecoderInstanceLocator {
 
+    private static final String METHOD_ENCODE = "encode";
+    private static final String METHOD_DECODE = "decode";
     public static final String JSON_ENCODER_DECODER_CLASS = AbstractJsonEncoderDecoder.class.getName();
     public static final String JSON_CLASS = Json.class.getName();
 
@@ -142,30 +144,42 @@ public class JsonEncoderDecoderInstanceLocator {
         return rc;
     }
 
+    private String toExpression(String instance, String method, String expression) {
+        return instance + "." + method + "(" + expression + ")";
+    }
+    
+    public String decodeExpression(String instance, String expression) {
+        return toExpression(instance, METHOD_DECODE, expression);
+    }
+    
+    public String encodeExpression(String instance, String expression) {
+        return toExpression(instance, METHOD_ENCODE, expression);
+    }
+
     public String encodeExpression(JType type, String expression, Style style) throws UnableToCompleteException {
-        return encodeDecodeExpression(type, expression, style, "encode", JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS
+        return encodeDecodeExpression(type, expression, style, METHOD_ENCODE, JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS + ".toJSON", JSON_ENCODER_DECODER_CLASS
                 + ".toJSON");
     }
 
     public String decodeExpression(JType type, String expression, Style style) throws UnableToCompleteException {
-        return encodeDecodeExpression(type, expression, style, "decode", JSON_ENCODER_DECODER_CLASS + ".toArray", JSON_ENCODER_DECODER_CLASS + ".toMap", JSON_ENCODER_DECODER_CLASS + ".toSet", JSON_ENCODER_DECODER_CLASS
+        return encodeDecodeExpression(type, expression, style, METHOD_DECODE, JSON_ENCODER_DECODER_CLASS + ".toArray", JSON_ENCODER_DECODER_CLASS + ".toMap", JSON_ENCODER_DECODER_CLASS + ".toSet", JSON_ENCODER_DECODER_CLASS
                 + ".toList");
     }
 
-    private String encodeDecodeExpression(JType type, String expression, Style style, String encoderMethod, String arrayMethod, String mapMethod, String setMethod, String listMethod)
+    private String encodeDecodeExpression(JType type, String expression, Style style, String method, String arrayMethod, String mapMethod, String setMethod, String listMethod)
             throws UnableToCompleteException {
 
         if (null != type.isEnum()) {
-            if (encoderMethod.equals("encode")) {
-                return encodeDecodeExpression(STRING_TYPE, expression + ".name()", style, encoderMethod, arrayMethod, mapMethod, setMethod, listMethod);
+            if (method.equals(METHOD_ENCODE)) {
+                return encodeDecodeExpression(STRING_TYPE, expression + ".name()", style, method, arrayMethod, mapMethod, setMethod, listMethod);
             } else {
-                return type.getQualifiedSourceName() + ".valueOf(" + encodeDecodeExpression(STRING_TYPE, expression, style, encoderMethod, arrayMethod, mapMethod, setMethod, listMethod) + ")";
+                return type.getQualifiedSourceName() + ".valueOf(" + encodeDecodeExpression(STRING_TYPE, expression, style, method, arrayMethod, mapMethod, setMethod, listMethod) + ")";
             }
         }
 
         String encoderDecoder = getEncoderDecoder(type, logger);
         if (encoderDecoder != null) {
-            return encoderDecoder + "." + encoderMethod + "(" + expression + ")";
+            return toExpression(encoderDecoder, method, expression);
         }
 
         JClassType clazz = type.isClassOrInterface();

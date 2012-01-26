@@ -19,6 +19,8 @@
 package org.fusesource.restygwt.rebind;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -299,18 +301,28 @@ public class JsonEncoderDecoderClassCreator extends BaseSourceCreator {
     
         			String name = field.getName();
         			String jsonName = name;
+        			String encoderDecoderInstance = null;
     
         			if (jsonAnnotation != null && jsonAnnotation.name().length() > 0) {
         			    jsonName = jsonAnnotation.name();
         			}
     
+        			if (jsonAnnotation != null && jsonAnnotation.encoderDecoder().length() > 0) {
+                        encoderDecoderInstance = checkAndGetInstance(jsonAnnotation.encoderDecoder());
+        			}
+        			    
         			String fieldExpr = "parseValue." + name;
         			if (getterName != null) {
         			    fieldExpr = "parseValue." + getterName + "()";
         			}
-    
-        			Style style = jsonAnnotation != null ? jsonAnnotation.style() : classStyle;
-        			String expression = locator.encodeExpression(field.getType(), fieldExpr, style);
+
+        			String expression;
+        			if (encoderDecoderInstance == null) {
+        			    Style style = jsonAnnotation != null ? jsonAnnotation.style() : classStyle;
+        			    expression = locator.encodeExpression(field.getType(), fieldExpr, style);
+        			} else {
+        			    expression = locator.encodeExpression(encoderDecoderInstance, fieldExpr);
+        			}
     
         			p("{").i(1);
         			{
@@ -405,13 +417,26 @@ public class JsonEncoderDecoderClassCreator extends BaseSourceCreator {
         		branch("Processing field: " + field.getName(), new Branch<Void>() {
         		    public Void execute() throws UnableToCompleteException {
         			Json jsonAnnotation = field.getAnnotation(Json.class);
-        			Style style = jsonAnnotation != null ? jsonAnnotation.style() : classStyle;
         			String jsonName = field.getName();
+        			String encoderDecoderInstance = null;
+        			
         			if (jsonAnnotation != null && jsonAnnotation.name().length() > 0) {
         			    jsonName = jsonAnnotation.name();
         			}
+
+        			if (jsonAnnotation != null && jsonAnnotation.encoderDecoder().length() > 0) {
+                        encoderDecoderInstance = checkAndGetInstance(jsonAnnotation.encoderDecoder());
+                    }
+        			
         			String objectGetter = "object.get(" + wrap(jsonName) + ")";
-        			String expression = locator.decodeExpression(field.getType(), objectGetter, style);
+        			
+        			String expression;
+        			if (encoderDecoderInstance == null) {
+        			    Style style = jsonAnnotation != null ? jsonAnnotation.style() : classStyle;
+        			    expression = locator.decodeExpression(field.getType(), objectGetter, style);
+        			} else {
+        			    expression = locator.decodeExpression(encoderDecoderInstance, objectGetter);
+        			}
     
         			if (field.getType().isPrimitive() == null) {
                         i(1).p("" + (objectGetter + " == null || " + objectGetter + " instanceof com.google.gwt.json.client.JSONNull ? null : " + expression + ((field != lastField) ? ", " : ""))).i(-1);
@@ -449,20 +474,29 @@ public class JsonEncoderDecoderClassCreator extends BaseSourceCreator {
         			// TODO: try to set the field with a setter
         			// or JSNI
         			if (setterName != null || field.isDefaultAccess() || field.isProtected() || field.isPublic()) {
-    
         			    Json jsonAnnotation = field.getAnnotation(Json.class);
-        			    Style style = jsonAnnotation != null ? jsonAnnotation.style() : classStyle;
     
         			    String name = field.getName();
         			    String jsonName = field.getName();
-    
-        			    if (jsonAnnotation != null && jsonAnnotation.name().length() > 0) {
-        				jsonName = jsonAnnotation.name();
-        			    }
-    
-        			    String objectGetter = "object.get(" + wrap(jsonName) + ")";
-        			    String expression = locator.decodeExpression(field.getType(), objectGetter, style);
-    
+                        String encoderDecoderInstance = null;
+
+                        if (jsonAnnotation != null && jsonAnnotation.name().length() > 0) {
+                            jsonName = jsonAnnotation.name();
+                        }
+                        if (jsonAnnotation != null && jsonAnnotation.encoderDecoder().length() > 0) {
+                            encoderDecoderInstance = checkAndGetInstance(jsonAnnotation.encoderDecoder());
+                        }
+                        
+                        String objectGetter = "object.get(" + wrap(jsonName) + ")";
+                        
+                        String expression;
+                        if (encoderDecoderInstance == null) {
+                            Style style = jsonAnnotation != null ? jsonAnnotation.style() : classStyle;
+                            expression = locator.decodeExpression(field.getType(), objectGetter, style);
+                        } else {
+                            expression = locator.decodeExpression(encoderDecoderInstance, objectGetter);
+                        }
+
         			    p("if(" + objectGetter + " != null) {").i(1);
     
         			    if (field.getType().isPrimitive() == null) {
@@ -683,5 +717,30 @@ public class JsonEncoderDecoderClassCreator extends BaseSourceCreator {
 	    // do nothing
 	}
 	return allFields;
+    }
+    
+    private String checkAndGetInstance(String encoderDecoder) throws UnableToCompleteException {
+        try {
+            // Check that class exists.
+            Class<?> clazz = Class.forName(encoderDecoder);
+            // Check that INSTANCE exists and it is static.
+            Field field = clazz.getField("INSTANCE");
+            int mods = field.getModifiers();
+            if (!(Modifier.isStatic(mods) && Modifier.isPublic(mods))) {
+                logger.log(ERROR, "Field " + encoderDecoder + ".INSTANCE must static and public.");
+                throw new UnableToCompleteException();
+            }
+            // Return expression.
+            return encoderDecoder + ".INSTANCE";
+        } catch (ClassNotFoundException e) {
+            logger.log(ERROR, "No class " + encoderDecoder + " found.", e);
+            throw new UnableToCompleteException();
+        } catch (SecurityException e) {
+            logger.log(ERROR, "No class " + encoderDecoder + " found.", e);
+            throw new UnableToCompleteException();
+        } catch (NoSuchFieldException e) {
+            logger.log(ERROR, "No static field " + encoderDecoder + ".INSTANCE found.", e);
+            throw new UnableToCompleteException();
+        }
     }
 }
