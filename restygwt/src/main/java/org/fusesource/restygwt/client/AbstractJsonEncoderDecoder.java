@@ -239,6 +239,40 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
         }
     };
 
+    public static final AbstractJsonEncoderDecoder<double[]> DOUBLE_ARRAY = new AbstractJsonEncoderDecoder<double[]>() {
+
+        public double[] decode(JSONValue value) throws DecodingException {
+            if (value == null || value.isNull() != null) {
+                return null;
+            }
+
+            JSONArray array = value.isArray();
+            if (array == null) {
+                throw new DecodingException("Expected a json array, but was given: " + value);
+            }
+
+            double[] rc = new double[array.size()];
+            int size = array.size();
+            for (int i = 0; i < size; i++) {
+                JSONValue number = array.get(i);
+                rc[i] = number.isNull() == null ? toDouble(number) : null;
+            }
+            return rc;
+        }
+
+        public JSONValue encode(double[] value) throws EncodingException {
+            if (value == null) {
+                return JSONNull.getInstance();
+            }
+            JSONArray rc = new JSONArray();
+            int i = 0;
+            for (double v : value) {
+                rc.set(i++, new JSONNumber(v));
+            }
+            return rc;
+        }
+    };
+
     public static final AbstractJsonEncoderDecoder<String> STRING = new AbstractJsonEncoderDecoder<String>() {
 
         public String decode(JSONValue value) throws DecodingException {
