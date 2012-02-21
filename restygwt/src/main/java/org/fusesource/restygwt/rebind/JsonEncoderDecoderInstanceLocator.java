@@ -118,6 +118,8 @@ public class JsonEncoderDecoderInstanceLocator {
         builtInEncoderDecoders.put(findArray(JPrimitiveType.LONG), JSON_ENCODER_DECODER_CLASS + ".LONG_ARRAY");
         builtInEncoderDecoders.put(findArray(JPrimitiveType.FLOAT), JSON_ENCODER_DECODER_CLASS + ".FLOAT_ARRAY");
         builtInEncoderDecoders.put(findArray(JPrimitiveType.DOUBLE), JSON_ENCODER_DECODER_CLASS + ".DOUBLE_ARRAY");
+        builtInEncoderDecoders.put(findArray(findArray(JPrimitiveType.DOUBLE)), JSON_ENCODER_DECODER_CLASS + ".DOUBLE_ARRAY_ARRAY");
+        builtInEncoderDecoders.put(findArray(findArray(findArray(JPrimitiveType.DOUBLE))), JSON_ENCODER_DECODER_CLASS + ".DOUBLE_ARRAY_ARRAY_ARRAY");
     }
 
     private JClassType find(Class<?> type) throws UnableToCompleteException {

@@ -252,8 +252,7 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
             }
 
             double[] rc = new double[array.size()];
-            int size = array.size();
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < array.size(); i++) {
                 JSONValue number = array.get(i);
                 rc[i] = number.isNull() == null ? toDouble(number) : null;
             }
@@ -270,6 +269,72 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
                 rc.set(i++, new JSONNumber(v));
             }
             return rc;
+        }
+    };
+
+    public static final AbstractJsonEncoderDecoder<double[][]> DOUBLE_ARRAY_ARRAY = new AbstractJsonEncoderDecoder<double[][]>() {
+
+        public double[][] decode(JSONValue value) throws DecodingException {
+            if (value == null || value.isNull() != null) {
+                return null;
+            }
+
+            JSONArray array2d = value.isArray();
+            if (array2d == null) {
+                throw new DecodingException("Expected a json array, but was given: " + value);
+            }
+
+            double[][] result = new double[array2d.size()][];
+            for (int i = 0; i < array2d.size(); i++) {
+                JSONValue array1d = array2d.get(i);
+                result[i] = DOUBLE_ARRAY.decode(array1d);
+            }
+            return result;
+        }
+
+        public JSONValue encode(double[][] array2d) throws EncodingException {
+            if (array2d == null) {
+                return JSONNull.getInstance();
+            }
+            JSONArray jsonArray2d = new JSONArray();
+            int i = 0;
+            for (double[] array1d : array2d) {
+                jsonArray2d.set(i++, DOUBLE_ARRAY.encode(array1d));
+            }
+            return jsonArray2d;
+        }
+    };
+
+    public static final AbstractJsonEncoderDecoder<double[][][]> DOUBLE_ARRAY_ARRAY_ARRAY = new AbstractJsonEncoderDecoder<double[][][]>() {
+
+        public double[][][] decode(JSONValue value) throws DecodingException {
+            if (value == null || value.isNull() != null) {
+                return null;
+            }
+
+            JSONArray array3d = value.isArray();
+            if (array3d == null) {
+                throw new DecodingException("Expected a json array, but was given: " + value);
+            }
+
+            double[][][] result = new double[array3d.size()][][];
+            for (int i = 0; i < array3d.size(); i++) {
+                JSONValue array2d = array3d.get(i);
+                result[i] = DOUBLE_ARRAY_ARRAY.decode(array2d);
+            }
+            return result;
+        }
+
+        public JSONValue encode(double[][][] array3d) throws EncodingException {
+            if (array3d == null) {
+                return JSONNull.getInstance();
+            }
+            JSONArray jsonArray3d = new JSONArray();
+            int i = 0;
+            for (double[][] array2d : array3d) {
+                jsonArray3d.set(i++, DOUBLE_ARRAY_ARRAY.encode(array2d));
+            }
+            return jsonArray3d;
         }
     };
 
