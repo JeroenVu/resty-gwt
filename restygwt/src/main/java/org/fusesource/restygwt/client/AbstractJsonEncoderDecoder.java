@@ -338,6 +338,39 @@ abstract public class AbstractJsonEncoderDecoder<T> implements JsonEncoderDecode
         }
     };
 
+    public static final AbstractJsonEncoderDecoder<double[][][][]> DOUBLE_ARRAY_ARRAY_ARRAY_ARRAY = new AbstractJsonEncoderDecoder<double[][][][]>() {
+
+        public double[][][][] decode(JSONValue value) throws DecodingException {
+            if (value == null || value.isNull() != null) {
+                return null;
+            }
+
+            JSONArray array4d = value.isArray();
+            if (array4d == null) {
+                throw new DecodingException("Expected a json array, but was given: " + value);
+            }
+
+            double[][][][] result = new double[array4d.size()][][][];
+            for (int i = 0; i < array4d.size(); i++) {
+                JSONValue array3d = array4d.get(i);
+                result[i] = DOUBLE_ARRAY_ARRAY_ARRAY.decode(array3d);
+            }
+            return result;
+        }
+
+        public JSONValue encode(double[][][][] array4d) throws EncodingException {
+            if (array4d == null) {
+                return JSONNull.getInstance();
+            }
+            JSONArray jsonArray4d = new JSONArray();
+            int i = 0;
+            for (double[][][] array3d : array4d) {
+                jsonArray4d.set(i++, DOUBLE_ARRAY_ARRAY_ARRAY.encode(array3d));
+            }
+            return jsonArray4d;
+        }
+    };
+
     public static final AbstractJsonEncoderDecoder<String> STRING = new AbstractJsonEncoderDecoder<String>() {
 
         public String decode(JSONValue value) throws DecodingException {
